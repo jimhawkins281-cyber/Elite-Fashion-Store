@@ -1,0 +1,50 @@
+[
+  {
+    "id": 1,
+    "name": "Classic White Shirt",
+    "category": "Tops",
+    "price": 29.99,
+    "image": "https://images.unsplash.com/photo-1596755094514-f87e32f05e38",
+    "description": "A crisp, classic white shirt perfect for any occasion."
+  },
+  {
+    "id": 2,
+    "name": "Black Denim Jeans",
+    "category": "Jeans",
+    "price": 49.99,
+    "image": "https://images.unsplash.com/photo-1541099649105-f69ad21f3246",
+    "description": "Stylish black denim jeans with a comfortable fit."
+  },
+  {
+    "id": 3,
+    "name": "Floral Summer Dress",
+    "category": "Dresses",
+    "price": 39.99,
+    "image": "https://images.unsplash.com/photo-1572804013309-59a88b7e92f1",
+    "description": "A beautiful floral dress for the warm summer days."
+  },
+  {
+    "id": 4,
+    "name": "Casual Blue Tee",
+    "category": "Tops",
+    "price": 19.99,
+    "image": "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab",
+    "description": "Soft and comfortable blue t-shirt for daily wear."
+  },
+  {
+    "id": 5,
+    "name": "Formal Black Dress",
+    "category": "Dresses",
+    "price": 89.99,
+    "image": "https://images.unsplash.com/photo-1539008835657-9e8e9680c956",
+    "description": "Elegant black dress for formal events."
+  },
+  {
+    "id": 6,
+    "name": "Light Blue Skinny Jeans",
+    "category": "Jeans",
+    "price": 59.99,
+    "image": "https://images.unsplash.com/photo-1542272454315-4c01d7abdf4a",
+    "description": "Classic skinny fit light blue jeans."
+  }
+]
