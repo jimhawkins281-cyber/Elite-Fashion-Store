@@ -57,6 +57,7 @@ st.markdown("""
 PRODUCTS_FILE = 'products.json'
 USERS_FILE = 'users.json'
 ORDERS_FILE = 'orders.json'
+ADMIN_FILE = 'admin.json'
 
 # Helper functions for data parsing
 def load_data(file_path):
@@ -73,6 +74,10 @@ def load_data(file_path):
             ]
             save_data(default_products, file_path)
             return default_products
+        elif file_path == ADMIN_FILE:
+            default_admin = {"email": "admin@elitefashion.com", "password": "admin123"}
+            save_data(default_admin, file_path)
+            return default_admin
         return []
     with open(file_path, 'r') as f:
         return json.load(f)
@@ -88,6 +93,8 @@ if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
 if 'username' not in st.session_state:
     st.session_state.username = ""
+if 'email' not in st.session_state:
+    st.session_state.email = ""
 if 'is_admin' not in st.session_state:
     st.session_state.is_admin = False
 
@@ -100,6 +107,7 @@ def sidebar_nav():
         if st.sidebar.button("Logout"):
             st.session_state.logged_in = False
             st.session_state.username = ""
+            st.session_state.email = ""
             st.session_state.is_admin = False
             st.session_state.cart = {}
             st.rerun()
@@ -274,20 +282,43 @@ def checkout_system():
     st.markdown(f"### Total Amount: ${total_price:.2f}")
     st.markdown("---")
     
+    st.subheader("Payment Method")
+    payment_method = st.radio("Select Payment Method", ["Cash on Delivery", "Credit/Debit Card", "Online Payment (Razorpay Simulation)"])
+
     with st.form("checkout_form"):
         st.subheader("Shipping Information")
         name = st.text_input("Full Name", value=st.session_state.username)
-        address = st.text_area("Shipping Address")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            house_number = st.text_input("House / Apartment Number")
+            city = st.text_input("City")
+        with col2:
+            street = st.text_input("Street Name")
+            zip_code = st.text_input("ZIP / Postal Code")
+            
         phone = st.text_input("Phone Number")
         
-        st.subheader("Payment Method")
-        payment_method = st.radio("Select Payment Method", ["Cash on Delivery", "Online Payment (Razorpay Simulation)"])
+        card_name, card_number, expiry, cvv = "", "", "", ""
+        if payment_method == "Credit/Debit Card":
+            st.subheader("Card Details")
+            col1, col2 = st.columns(2)
+            with col1:
+                card_name = st.text_input("Name on Card")
+                card_number = st.text_input("Card Number", max_chars=16)
+            with col2:
+                expiry = st.text_input("Expiry (MM/YY)", max_chars=5)
+                cvv = st.text_input("CVV", type="password", max_chars=4)
         
         submitted = st.form_submit_button("Place Order")
         
         if submitted:
-            if not name or not address or not phone:
+            address = f"House/Apt: {house_number}, {street}, {city}, ZIP: {zip_code}"
+            
+            if not name or not house_number or not street or not city or not zip_code or not phone:
                 st.error("Please fill in all shipping details.")
+            elif payment_method == "Credit/Debit Card" and (not card_name or not card_number or not expiry or not cvv):
+                st.error("Please fill in all credit card details.")
             else:
                 # Generate unique Order ID
                 order_id = str(uuid.uuid4())[:8].upper()
@@ -295,8 +326,12 @@ def checkout_system():
                 # Payment Simulation
                 status = "Pending"
                 if payment_method == "Online Payment (Razorpay Simulation)":
-                    st.success("Redirecting to payment gateway...")
+                    st.success("Redirecting to Razorpay...")
                     st.info("Payment Successful! Mock Razorpay ID generated.")
+                    status = "Processing"
+                elif payment_method == "Credit/Debit Card":
+                    st.success("Processing electronic payment...")
+                    st.info("Payment Successful! Transaction approved.")
                     status = "Processing"
                 
                 # Save Order Object
@@ -413,54 +448,106 @@ def order_tracking_system():
 def auth_page():
     st.markdown("<h1 style='text-align: center;'>ACCOUNT</h1>", unsafe_allow_html=True)
     
-    tab1, tab2 = st.tabs(["Login", "Create Account"])
+    tab1, tab2, tab3 = st.tabs(["Login", "Create Account", "Forgot Password"])
     
     with tab1:
         st.subheader("Login to your account")
-        username = st.text_input("Username", key="l_user")
+        email = st.text_input("Email", key="l_email")
         password = st.text_input("Password", type="password", key="l_pass")
         
         if st.button("Login"):
             # Admin Check
-            if username == "admin" and password == "admin123":
+            admin_data = load_data(ADMIN_FILE)
+            if email == admin_data.get("email") and password == admin_data.get("password"):
                 st.session_state.logged_in = True
-                st.session_state.username = username
+                st.session_state.username = "admin"
+                st.session_state.email = email
                 st.session_state.is_admin = True
                 st.success("Admin logged in successfully!")
                 st.rerun()
             else:
                 users = load_data(USERS_FILE)
-                user = next((u for u in users if u["username"] == username and u["password"] == password), None)
+                user = next((u for u in users if (u.get("email") == email or u.get("username") == email) and u["password"] == password), None)
                 if user:
                     st.session_state.logged_in = True
-                    st.session_state.username = username
+                    st.session_state.username = user.get("username", email.split('@')[0])
+                    st.session_state.email = email
                     st.session_state.is_admin = False
                     st.success("Logged in successfully!")
                     st.rerun()
                 else:
-                    st.error("Invalid username or password.")
+                    st.error("Invalid email or password.")
                     
     with tab2:
         st.subheader("Create a new account")
-        s_username = st.text_input("New Username", key="s_user")
+        s_email = st.text_input("Email Address", key="s_email")
         s_password = st.text_input("New Password", type="password", key="s_pass")
         s_confirm = st.text_input("Confirm Password", type="password", key="s_conf")
         
         if st.button("Signup"):
             if s_password != s_confirm:
                 st.error("Passwords do not match.")
-            elif not s_username or not s_password:
+            elif not s_email or not s_password:
                 st.error("Please fill all fields.")
-            elif s_username.lower() == "admin":
-                st.error("The username 'admin' is reserved.")
+            elif "@" not in s_email or "." not in s_email:
+                st.error("Please enter a valid email address.")
+            elif s_email.lower() == load_data(ADMIN_FILE).get("email", "").lower():
+                st.error("This email is reserved for admin.")
             else:
                 users = load_data(USERS_FILE)
-                if any(u["username"] == s_username for u in users):
-                    st.error("Username already exists. Choose a different one.")
+                if any(u.get("email") == s_email for u in users):
+                    st.error("Email already exists. Choose a different one.")
                 else:
-                    users.append({"username": s_username, "password": s_password})
+                    users.append({"email": s_email, "username": s_email.split('@')[0], "password": s_password})
                     save_data(users, USERS_FILE)
                     st.success("Account created successfully! Please login.")
+
+    with tab3:
+        st.subheader("Reset Password")
+        fp_email = st.text_input("Enter your registered email address", key="fp_email")
+        
+        # State variables for forgot password flow
+        if 'reset_code' not in st.session_state:
+            st.session_state.reset_code = None
+        if 'reset_email' not in st.session_state:
+            st.session_state.reset_email = None
+            
+        if st.button("Send Verification Code"):
+            if not fp_email:
+                st.warning("Please enter your email address.")
+            else:
+                users = load_data(USERS_FILE)
+                if any(u.get("email") == fp_email for u in users):
+                    code = str(random.randint(100000, 999999))
+                    st.session_state.reset_code = code
+                    st.session_state.reset_email = fp_email
+                    st.success(f"Verification code sent to {fp_email}!")
+                    st.info(f"📧 Email Simulation: Your verification code is **{code}**")
+                else:
+                    st.error("No account found with that email address.")
+                    
+        if st.session_state.reset_code:
+            v_code = st.text_input("Verification Code", key="v_code")
+            new_password = st.text_input("New Password", type="password", key="np_pass")
+            confirm_new_password = st.text_input("Confirm New Password", type="password", key="cnp_pass")
+            
+            if st.button("Reset Password"):
+                if v_code != st.session_state.reset_code:
+                    st.error("Invalid verification code.")
+                elif new_password != confirm_new_password:
+                    st.error("Passwords do not match.")
+                elif not new_password:
+                    st.error("Please enter a new password.")
+                else:
+                    users = load_data(USERS_FILE)
+                    for u in users:
+                        if u.get("email") == st.session_state.reset_email:
+                            u["password"] = new_password
+                            break
+                    save_data(users, USERS_FILE)
+                    st.success("Password reset successfully! You can now login.")
+                    st.session_state.reset_code = None
+                    st.session_state.reset_email = None
 
 # 9. ADMIN DASHBOARD
 def admin_dashboard():
@@ -469,7 +556,7 @@ def admin_dashboard():
         st.error("Unauthorized access. Admin privileges required.")
         return
         
-    tab1, tab2, tab3 = st.tabs(["Inventory Management", "Order Management", "Store Analytics"])
+    tab1, tab2, tab3, tab4 = st.tabs(["Inventory Management", "Order Management", "Store Analytics", "Admin Settings"])
     
     # Manage Products
     with tab1:
@@ -560,6 +647,31 @@ def admin_dashboard():
             st.markdown("### Recent Sales")
             df = pd.DataFrame(orders)
             st.dataframe(df[['order_id', 'name', 'total', 'status', 'payment_method']])
+            
+    # Admin Settings
+    with tab4:
+        st.subheader("Update Admin Credentials")
+        admin_data = load_data(ADMIN_FILE)
+        
+        with st.form("admin_settings_form"):
+            new_admin_email = st.text_input("New Admin Email", value=admin_data.get("email", ""))
+            new_admin_password = st.text_input("New Admin Password", type="password")
+            confirm_admin_password = st.text_input("Confirm New Password", type="password")
+            
+            if st.form_submit_button("Update Credentials"):
+                if not new_admin_email or not new_admin_password:
+                    st.error("Please fill in all fields.")
+                elif new_admin_password != confirm_admin_password:
+                    st.error("Passwords do not match.")
+                elif "@" not in new_admin_email or "." not in new_admin_email:
+                    st.error("Please enter a valid email address.")
+                else:
+                    admin_data["email"] = new_admin_email
+                    admin_data["password"] = new_admin_password
+                    save_data(admin_data, ADMIN_FILE)
+                    st.success("Admin credentials updated successfully! Please log in again to continue.")
+                    st.session_state.logged_in = False
+                    st.session_state.is_admin = False
 
 # Application Entry Point
 def main():
